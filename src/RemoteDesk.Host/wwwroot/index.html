@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RemoteDesk</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a1a; color: #fff; font-family: sans-serif;
+           display: flex; flex-direction: column; height: 100vh; }
+    #toolbar { padding: 8px 12px; background: #2a2a2a;
+               display: flex; align-items: center; gap: 12px; }
+    #canvas-wrap { flex: 1; display: flex;
+                   align-items: center; justify-content: center;
+                   overflow: hidden; }
+    canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+    #statusbar { padding: 4px 12px; background: #2a2a2a; font-size: 12px;
+                 display: flex; gap: 16px; color: #aaa; }
+    .status-ok  { color: #4caf50; }
+    .status-err { color: #f44336; }
+    button { padding: 4px 12px; background: #444; color: #fff;
+             border: 1px solid #666; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #555; }
+    input { padding: 4px 8px; background: #333; color: #fff;
+            border: 1px solid #555; border-radius: 4px; width: 220px; }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <span><strong>RemoteDesk</strong></span>
+    <input id="host-input" placeholder="IP:Port (z.B. 192.168.1.10:8443)">
+    <button id="connect-btn" onclick="viewer.connect()">Verbinden</button>
+    <button id="disconnect-btn" onclick="viewer.disconnect()" style="display:none">Trennen</button>
+    <button id="fullscreen-btn" onclick="toggleFullscreen()">Vollbild</button>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="remote-canvas"></canvas>
+  </div>
+
+  <div id="statusbar">
+    <span id="status-conn">Getrennt</span>
+    <span id="status-fps">FPS: –</span>
+    <span id="status-latency">Latenz: –</span>
+    <span id="status-codec">Codec: –</span>
+  </div>
+
+  <script src="codec.js"></script>
+  <script src="viewer.js"></script>
+</body>
+</html>

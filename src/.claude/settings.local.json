@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet --version)",
+      "Bash(dotnet script *)",
+      "Bash(where dotnet-script *)",
+      "Bash(cd /tmp)",
+      "Bash(dotnet new *)",
+      "Read(//tmp/**)",
+      "Bash(dotnet add *)",
+      "Bash(dotnet run *)",
+      "Bash(dotnet build *)"
+    ]
+  }
+}

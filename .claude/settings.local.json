@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet --version)",
+      "Bash(dotnet --list-sdks)",
+      "Bash(mkdir -p src)",
+      "Bash(dotnet new:*)",
+      "Bash(dotnet sln:*)",
+      "Bash(dotnet add:*)",
+      "Bash(rm -f RemoteDesk.Shared/Class1.cs RemoteDesk.Host.Tests/UnitTest1.cs)",
+      "Bash(mkdir -p RemoteDesk.Host/Capture/Models RemoteDesk.Host/Encoding RemoteDesk.Host/Server RemoteDesk.Host/Session RemoteDesk.Host/UI RemoteDesk.Host/wwwroot RemoteDesk.Shared/Protocol RemoteDesk.Relay/Hubs RemoteDesk.Host.Tests/Capture)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(ls:*)",
+      "Bash(ffmpeg -version)",
+      "Bash(ffmpeg -codecs)"
+    ]
+  }
+}

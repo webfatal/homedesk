@@ -1,0 +1,52 @@
+<Window x:Class="RemoteDesk.Host.UI.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="RemoteDesk — Einstellungen"
+        Width="400" Height="420"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen">
+
+    <StackPanel Margin="16" >
+
+        <!-- Server Port -->
+        <TextBlock Text="Server-Port:" Margin="0,0,0,4"/>
+        <TextBox x:Name="PortInput" Text="8443" Width="120" HorizontalAlignment="Left" Margin="0,0,0,12"/>
+
+        <!-- FPS Slider -->
+        <TextBlock Text="Bildrate (FPS):" Margin="0,0,0,4"/>
+        <DockPanel Margin="0,0,0,12">
+            <TextBlock x:Name="FpsLabel" DockPanel.Dock="Right" Text="15" Width="30" TextAlignment="Right" VerticalAlignment="Center"/>
+            <Slider x:Name="FpsSlider" Minimum="5" Maximum="30" Value="15"
+                    IsSnapToTickEnabled="True" TickFrequency="1"
+                    ValueChanged="OnFpsSliderChanged"/>
+        </DockPanel>
+
+        <!-- Quality -->
+        <TextBlock Text="Qualität:" Margin="0,0,0,4"/>
+        <StackPanel Margin="0,0,0,12">
+            <RadioButton x:Name="QualityLow" Content="Niedrig" GroupName="Quality"/>
+            <RadioButton x:Name="QualityMedium" Content="Mittel" GroupName="Quality" IsChecked="True"/>
+            <RadioButton x:Name="QualityHigh" Content="Hoch" GroupName="Quality"/>
+        </StackPanel>
+
+        <!-- Codec -->
+        <TextBlock Text="Video-Codec:" Margin="0,0,0,4"/>
+        <ComboBox x:Name="CodecSelector" Width="200" HorizontalAlignment="Left" Margin="0,0,0,12"
+                  SelectedIndex="0">
+            <ComboBoxItem Content="VP8 (Software)" Tag="Vp8"/>
+            <ComboBoxItem Content="AV1 (NVIDIA GPU)" Tag="Av1"/>
+        </ComboBox>
+
+        <!-- Status -->
+        <Separator Margin="0,0,0,12"/>
+        <TextBlock x:Name="StatusText" Text="Status: Server gestoppt" Margin="0,0,0,4"/>
+        <TextBlock x:Name="UrlText" Text="" Foreground="Gray" Margin="0,0,0,16"/>
+
+        <!-- Buttons -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Speichern" Width="80" Margin="0,0,8,0" Click="OnSaveClick"/>
+            <Button Content="Abbrechen" Width="80" Click="OnCancelClick"/>
+        </StackPanel>
+
+    </StackPanel>
+</Window>

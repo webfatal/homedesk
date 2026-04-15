@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="RemoteDesk.Host.Tests/RemoteDesk.Host.Tests.csproj" />
+  <Project Path="RemoteDesk.Host/RemoteDesk.Host.csproj" />
+  <Project Path="RemoteDesk.Relay/RemoteDesk.Relay.csproj" />
+  <Project Path="RemoteDesk.Shared/RemoteDesk.Shared.csproj" />
+</Solution>
