@@ -14,7 +14,7 @@ public sealed class VP8EncoderService : IVideoEncoderService
     private int _width;
     private int _height;
     private int _fps;
-    private volatile bool _forceKeyframe;
+    private VideoQuality _quality;
     private bool _initialized;
     private bool _disposed;
 
@@ -44,8 +44,38 @@ public sealed class VP8EncoderService : IVideoEncoderService
         _width = width;
         _height = height;
         _fps = fps;
+        _quality = quality;
 
-        var crf = quality switch
+        StartFfmpegPipeline();
+
+        _statsStopwatch.Start();
+        _initialized = true;
+    }
+
+    public void Reconfigure(int fps, VideoQuality quality)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!_initialized)
+            throw new InvalidOperationException("Encoder is not initialized. Call Initialize first.");
+
+        if (fps == _fps && quality == _quality) return;
+
+        // Serialise against EncodeFrame so we never tear down ffmpeg while a
+        // frame write is in flight. The IVF stream ends cleanly and a fresh
+        // one starts — viewers keep their WebSocket and will see a new keyframe.
+        lock (_encodeLock)
+        {
+            _fps = fps;
+            _quality = quality;
+            StopFfmpegPipeline();
+            StartFfmpegPipeline();
+        }
+    }
+
+    private void StartFfmpegPipeline()
+    {
+        var crf = _quality switch
         {
             VideoQuality.Low => 40,
             VideoQuality.Medium => 24,
@@ -53,7 +83,7 @@ public sealed class VP8EncoderService : IVideoEncoderService
             _ => 24
         };
 
-        var bitrate = quality switch
+        var bitrate = _quality switch
         {
             VideoQuality.Low => "1500k",
             VideoQuality.Medium => "4000k",
@@ -65,7 +95,7 @@ public sealed class VP8EncoderService : IVideoEncoderService
             ? Path.Combine(GlobalFFOptions.Current.BinaryFolder, "ffmpeg")
             : "ffmpeg";
 
-        var cpuUsed = quality switch
+        var cpuUsed = _quality switch
         {
             VideoQuality.Low => 5,
             VideoQuality.Medium => 4,
@@ -78,6 +108,7 @@ public sealed class VP8EncoderService : IVideoEncoderService
                    $"-g {_fps * 2} -keyint_min {_fps * 2} " +
                    $"-f ivf pipe:1";
 
+        _ffmpegExited = false;
         _ffmpegProcess = new Process
         {
             StartInfo = new ProcessStartInfo
@@ -112,7 +143,6 @@ public sealed class VP8EncoderService : IVideoEncoderService
 
         _ffmpegProcess.BeginErrorReadLine();
 
-        // Verify the process is actually running
         if (_ffmpegProcess.HasExited)
         {
             throw new InvalidOperationException(
@@ -126,9 +156,26 @@ public sealed class VP8EncoderService : IVideoEncoderService
             Name = "VP8EncoderReader"
         };
         _readerThread.Start();
+    }
 
-        _statsStopwatch.Start();
-        _initialized = true;
+    private void StopFfmpegPipeline()
+    {
+        // Closing stdin lets ffmpeg flush and exit cleanly; the reader thread
+        // then sees EOF and terminates.
+        try { _ffmpegInput?.Close(); } catch { /* ignore */ }
+
+        _readerThread?.Join(TimeSpan.FromSeconds(2));
+        _readerThread = null;
+
+        if (_ffmpegProcess is { HasExited: false })
+        {
+            try { _ffmpegProcess.Kill(); } catch { /* ignore */ }
+        }
+
+        _ffmpegProcess?.Dispose();
+        _ffmpegProcess = null;
+        _ffmpegInput = null;
+        _ffmpegOutput = null;
     }
 
     public void EncodeFrame(byte[] bgraData, Action<byte[]> onEncodedChunk)
@@ -173,12 +220,16 @@ public sealed class VP8EncoderService : IVideoEncoderService
 
     public void ForceKeyframe()
     {
-        _forceKeyframe = true;
-        // Note: with the pipe-based approach, forcing a keyframe mid-stream requires
-        // restarting the encoder or using an approach with frame metadata.
-        // For the current implementation, keyframes are produced at the configured
-        // GOP interval (fps * 2). A full keyframe-on-demand solution requires
-        // a more sophisticated approach (e.g., named pipe with FFmpeg's control socket).
+        if (_disposed || !_initialized) return;
+
+        // The pipe-based ffmpeg pipeline has no sideband control for mid-stream
+        // keyframes, so we restart it. The next emitted frame is guaranteed to
+        // be a keyframe because every fresh libvpx stream starts with one.
+        lock (_encodeLock)
+        {
+            StopFfmpegPipeline();
+            StartFfmpegPipeline();
+        }
     }
 
     public VideoStats GetStats()
@@ -265,20 +316,7 @@ public sealed class VP8EncoderService : IVideoEncoderService
         if (_disposed) return;
         _disposed = true;
 
-        try
-        {
-            _ffmpegInput?.Close();
-        }
-        catch { /* ignore */ }
-
-        _readerThread?.Join(TimeSpan.FromSeconds(3));
-
-        if (_ffmpegProcess is { HasExited: false })
-        {
-            try { _ffmpegProcess.Kill(); } catch { /* ignore */ }
-        }
-
-        _ffmpegProcess?.Dispose();
+        StopFfmpegPipeline();
         _statsStopwatch.Stop();
     }
 }

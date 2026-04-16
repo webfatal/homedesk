@@ -12,6 +12,7 @@ public sealed class WebSocketSession : IDisposable
 
     public string Id { get; } = Guid.NewGuid().ToString("N")[..8];
     public string PreferredCodec { get; set; } = "jpeg";
+    public IReadOnlyList<string> Capabilities { get; set; } = Array.Empty<string>();
     public DateTime ConnectedAt { get; } = DateTime.UtcNow;
     public bool IsConnected => _webSocket.State == WebSocketState.Open;
 

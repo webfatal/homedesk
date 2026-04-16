@@ -17,6 +17,17 @@ public partial class App : Application
     private LocalWebSocketServer? _server;
     private SessionManager? _sessionManager;
 
+    /// <summary>
+    /// Active session manager. Exposed so the settings window can invoke
+    /// <see cref="SessionManager.ApplySettings"/> on runtime config changes.
+    /// </summary>
+    public SessionManager? SessionManager => _sessionManager;
+
+    /// <summary>
+    /// Current server port. Used by the settings window to display the URL.
+    /// </summary>
+    public int ServerPort => _server?.Port ?? 0;
+
     [DllImport("kernel32.dll")]
     private static extern bool AllocConsole();
 

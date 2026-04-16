@@ -90,6 +90,13 @@ public sealed class DesktopCaptureService : IDesktopCaptureService
         _captureThread = null;
     }
 
+    public void UpdateTargetFps(int targetFps)
+    {
+        // The capture loop reads _targetFps on every iteration, so a simple
+        // volatile write is enough to adjust the frame interval live.
+        _targetFps = Math.Clamp(targetFps, MinFps, MaxFps);
+    }
+
     private void CaptureLoop(int monitorIndex, Action<CapturedFrame> onFrame)
     {
         DxgiResources? resources = null;

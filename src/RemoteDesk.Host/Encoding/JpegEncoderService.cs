@@ -100,6 +100,37 @@ public sealed class JpegEncoderService : IVideoEncoderService
         onEncodedChunk(jpegBytes);
     }
 
+    public void Reconfigure(int fps, VideoQuality quality)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!_initialized)
+            throw new InvalidOperationException("Encoder is not initialized. Call Initialize first.");
+
+        // FPS is irrelevant for JPEG — each frame is a full image.
+        // Only the quality preset affects output.
+        var newJpegQuality = quality switch
+        {
+            VideoQuality.Low => 40L,
+            VideoQuality.Medium => 65L,
+            VideoQuality.High => 85L,
+            _ => 65L
+        };
+
+        if (newJpegQuality == _jpegQuality) return;
+
+        _jpegQuality = newJpegQuality;
+
+        var newParams = new EncoderParameters(1)
+        {
+            Param = { [0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, _jpegQuality) }
+        };
+
+        var oldParams = _encoderParams;
+        _encoderParams = newParams;
+        oldParams?.Dispose();
+    }
+
     public void ForceKeyframe()
     {
         // JPEG is always a full frame — no concept of keyframes

@@ -14,7 +14,7 @@ public sealed class Av1EncoderService : IVideoEncoderService
     private int _width;
     private int _height;
     private int _fps;
-    private volatile bool _forceKeyframe;
+    private VideoQuality _quality;
     private bool _initialized;
     private bool _disposed;
 
@@ -44,8 +44,35 @@ public sealed class Av1EncoderService : IVideoEncoderService
         _width = width;
         _height = height;
         _fps = fps;
+        _quality = quality;
 
-        var cq = quality switch
+        StartFfmpegPipeline();
+
+        _statsStopwatch.Start();
+        _initialized = true;
+    }
+
+    public void Reconfigure(int fps, VideoQuality quality)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!_initialized)
+            throw new InvalidOperationException("Encoder is not initialized. Call Initialize first.");
+
+        if (fps == _fps && quality == _quality) return;
+
+        lock (_encodeLock)
+        {
+            _fps = fps;
+            _quality = quality;
+            StopFfmpegPipeline();
+            StartFfmpegPipeline();
+        }
+    }
+
+    private void StartFfmpegPipeline()
+    {
+        var cq = _quality switch
         {
             VideoQuality.Low => 38,
             VideoQuality.Medium => 28,
@@ -53,7 +80,7 @@ public sealed class Av1EncoderService : IVideoEncoderService
             _ => 28
         };
 
-        var bitrate = quality switch
+        var bitrate = _quality switch
         {
             VideoQuality.Low => "1500k",
             VideoQuality.Medium => "4000k",
@@ -61,7 +88,7 @@ public sealed class Av1EncoderService : IVideoEncoderService
             _ => "4000k"
         };
 
-        var preset = quality switch
+        var preset = _quality switch
         {
             VideoQuality.Low => "p1",
             VideoQuality.Medium => "p4",
@@ -78,6 +105,7 @@ public sealed class Av1EncoderService : IVideoEncoderService
                    $"-g {_fps * 2} -keyint_min {_fps * 2} " +
                    $"-f ivf pipe:1";
 
+        _ffmpegExited = false;
         _ffmpegProcess = new Process
         {
             StartInfo = new ProcessStartInfo
@@ -125,9 +153,24 @@ public sealed class Av1EncoderService : IVideoEncoderService
             Name = "AV1EncoderReader"
         };
         _readerThread.Start();
+    }
 
-        _statsStopwatch.Start();
-        _initialized = true;
+    private void StopFfmpegPipeline()
+    {
+        try { _ffmpegInput?.Close(); } catch { /* ignore */ }
+
+        _readerThread?.Join(TimeSpan.FromSeconds(2));
+        _readerThread = null;
+
+        if (_ffmpegProcess is { HasExited: false })
+        {
+            try { _ffmpegProcess.Kill(); } catch { /* ignore */ }
+        }
+
+        _ffmpegProcess?.Dispose();
+        _ffmpegProcess = null;
+        _ffmpegInput = null;
+        _ffmpegOutput = null;
     }
 
     public void EncodeFrame(byte[] bgraData, Action<byte[]> onEncodedChunk)
@@ -172,7 +215,16 @@ public sealed class Av1EncoderService : IVideoEncoderService
 
     public void ForceKeyframe()
     {
-        _forceKeyframe = true;
+        if (_disposed || !_initialized) return;
+
+        // av1_nvenc via pipe has no control socket for mid-stream IDR requests,
+        // so we restart the pipeline. The next emitted frame will be a keyframe
+        // because NVENC always starts a new stream with one.
+        lock (_encodeLock)
+        {
+            StopFfmpegPipeline();
+            StartFfmpegPipeline();
+        }
     }
 
     public VideoStats GetStats()
@@ -259,20 +311,7 @@ public sealed class Av1EncoderService : IVideoEncoderService
         if (_disposed) return;
         _disposed = true;
 
-        try
-        {
-            _ffmpegInput?.Close();
-        }
-        catch { /* ignore */ }
-
-        _readerThread?.Join(TimeSpan.FromSeconds(3));
-
-        if (_ffmpegProcess is { HasExited: false })
-        {
-            try { _ffmpegProcess.Kill(); } catch { /* ignore */ }
-        }
-
-        _ffmpegProcess?.Dispose();
+        StopFfmpegPipeline();
         _statsStopwatch.Stop();
     }
 }

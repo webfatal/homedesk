@@ -164,6 +164,44 @@ public class DesktopCaptureServiceTests
     }
 
     [Fact]
+    public void UpdateTargetFps_WhileNotCapturing_DoesNotThrow()
+    {
+        // Arrange
+        var factory = new Mock<IDxgiDeviceFactory>();
+        using var service = new DesktopCaptureService(factory.Object);
+
+        // Act & Assert — UpdateTargetFps must be safe on an idle service
+        var exception = Record.Exception(() => service.UpdateTargetFps(20));
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void UpdateTargetFps_OutOfRange_IsClamped()
+    {
+        // Arrange
+        var started = new ManualResetEventSlim(false);
+        var factory = new Mock<IDxgiDeviceFactory>();
+        factory.Setup(f => f.CreateResources())
+            .Returns(() =>
+            {
+                started.Set();
+                Thread.Sleep(Timeout.Infinite);
+                throw new InvalidOperationException("Unreachable");
+            });
+
+        using var service = new DesktopCaptureService(factory.Object);
+        service.StartCapture(0, 15, _ => { });
+        started.Wait(TimeSpan.FromSeconds(2));
+
+        // Act & Assert — 100 must be clamped to MaxFps without throwing
+        var exception = Record.Exception(() => service.UpdateTargetFps(100));
+        Assert.Null(exception);
+
+        // Cleanup
+        service.StopCapture();
+    }
+
+    [Fact]
     public void Dispose_CalledTwice_DoesNotThrow()
     {
         // Arrange

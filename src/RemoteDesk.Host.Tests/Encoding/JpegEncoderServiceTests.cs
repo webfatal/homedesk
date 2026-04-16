@@ -122,6 +122,56 @@ public class JpegEncoderServiceTests
         Assert.Null(exception);
     }
 
+    [Fact]
+    public void Reconfigure_BeforeInitialize_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        using var encoder = new JpegEncoderService();
+
+        // Act & Assert
+        Assert.Throws<InvalidOperationException>(() =>
+            encoder.Reconfigure(20, VideoQuality.High));
+    }
+
+    [Fact]
+    public void Reconfigure_ChangesQuality_ProducesDifferentOutputSize()
+    {
+        // Arrange — a natural colour gradient so quality differences become visible
+        const int width = 32;
+        const int height = 32;
+        using var encoder = new JpegEncoderService();
+        encoder.Initialize(width, height, 15, VideoQuality.High);
+        var bgraData = new byte[width * height * 4];
+        for (var i = 0; i < bgraData.Length; i++) bgraData[i] = (byte)(i % 256);
+
+        // Act
+        byte[]? highOutput = null;
+        encoder.EncodeFrame(bgraData, chunk => highOutput = chunk);
+
+        encoder.Reconfigure(15, VideoQuality.Low);
+        byte[]? lowOutput = null;
+        encoder.EncodeFrame(bgraData, chunk => lowOutput = chunk);
+
+        // Assert — low quality should be smaller than high for the same payload
+        Assert.NotNull(highOutput);
+        Assert.NotNull(lowOutput);
+        Assert.True(lowOutput.Length < highOutput.Length,
+            $"Expected Low ({lowOutput.Length}) < High ({highOutput.Length})");
+    }
+
+    [Fact]
+    public void Reconfigure_SameQuality_IsIdempotent()
+    {
+        // Arrange
+        using var encoder = new JpegEncoderService();
+        encoder.Initialize(10, 10, 15, VideoQuality.Medium);
+
+        // Act & Assert
+        var exception = Record.Exception(() =>
+            encoder.Reconfigure(20, VideoQuality.Medium));
+        Assert.Null(exception);
+    }
+
     [Theory]
     [InlineData(VideoQuality.Low)]
     [InlineData(VideoQuality.Medium)]

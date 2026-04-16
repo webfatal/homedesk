@@ -25,6 +25,12 @@ public interface IDesktopCaptureService : IDisposable
     void StopCapture();
 
     /// <summary>
+    /// Updates the target frame rate of a running capture loop without tearing it down.
+    /// No-op if capture is not currently running.
+    /// </summary>
+    void UpdateTargetFps(int targetFps);
+
+    /// <summary>
     /// Whether a capture session is currently running.
     /// </summary>
     bool IsCapturing { get; }

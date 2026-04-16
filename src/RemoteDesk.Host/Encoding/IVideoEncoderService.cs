@@ -14,6 +14,13 @@ public interface IVideoEncoderService : IDisposable
     void Initialize(int width, int height, int fps, VideoQuality quality);
 
     /// <summary>
+    /// Applies a new FPS / quality pair to an already initialized encoder without
+    /// forcing connected viewers to reconnect. Implementations may restart an
+    /// underlying pipeline (e.g. ffmpeg) but must keep the encoder instance reusable.
+    /// </summary>
+    void Reconfigure(int fps, VideoQuality quality);
+
+    /// <summary>
     /// Encodes a single BGRA32 frame. The encoded chunk is delivered via <paramref name="onEncodedChunk"/>.
     /// </summary>
     void EncodeFrame(byte[] bgraData, Action<byte[]> onEncodedChunk);

@@ -91,6 +91,17 @@ public class VP8EncoderServiceTests
     }
 
     [Fact]
+    public void Reconfigure_BeforeInitialize_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        using var encoder = new VP8EncoderService();
+
+        // Act & Assert — guard must fire without needing ffmpeg
+        Assert.Throws<InvalidOperationException>(() =>
+            encoder.Reconfigure(20, VideoQuality.High));
+    }
+
+    [Fact]
     public void Dispose_AfterInitialize_DoesNotThrow()
     {
         // Arrange

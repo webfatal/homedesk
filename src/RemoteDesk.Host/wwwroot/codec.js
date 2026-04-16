@@ -4,6 +4,10 @@ class VP8Decoder {
         this.canvas = canvas;
         this.onFrameDecoded = onFrameDecoded;
         this.decoder = null;
+        // After configure(), WebCodecs requires a keyframe as the very first
+        // chunk. Any delta frames in flight from the previous pipeline must be
+        // dropped until we see a key.
+        this._needsKeyframe = true;
     }
 
     initialize(width, height) {
@@ -26,10 +30,12 @@ class VP8Decoder {
             codedHeight: height,
             optimizeForLatency: true
         });
+        this._needsKeyframe = true;
     }
 
     decodeFrame(payload, isKeyframe) {
         if (this.decoder?.state !== 'configured') return;
+        if (this._needsKeyframe && !isKeyframe) return;
 
         const chunk = new EncodedVideoChunk({
             type: isKeyframe ? 'key' : 'delta',
@@ -37,6 +43,7 @@ class VP8Decoder {
             data: payload
         });
         this.decoder.decode(chunk);
+        if (isKeyframe) this._needsKeyframe = false;
     }
 
     dispose() {
@@ -53,6 +60,7 @@ class AV1Decoder {
         this.canvas = canvas;
         this.onFrameDecoded = onFrameDecoded;
         this.decoder = null;
+        this._needsKeyframe = true;
     }
 
     initialize(width, height) {
@@ -75,10 +83,14 @@ class AV1Decoder {
             codedHeight: height,
             optimizeForLatency: true
         });
+        this._needsKeyframe = true;
     }
 
     decodeFrame(payload, isKeyframe) {
         if (this.decoder?.state !== 'configured') return;
+        // AV1's WebCodecs decoder throws DataError if the first chunk after
+        // configure() is not a keyframe. Drop any in-flight delta frames.
+        if (this._needsKeyframe && !isKeyframe) return;
 
         const chunk = new EncodedVideoChunk({
             type: isKeyframe ? 'key' : 'delta',
@@ -86,6 +98,7 @@ class AV1Decoder {
             data: payload
         });
         this.decoder.decode(chunk);
+        if (isKeyframe) this._needsKeyframe = false;
     }
 
     dispose() {

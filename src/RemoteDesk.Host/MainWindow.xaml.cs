@@ -39,6 +39,15 @@ public partial class MainWindow : Window
         }
 
         _settingsWindow = new SettingsWindow();
+
+        // Pre-fill with the currently running server state so the dialog
+        // reflects reality, not the XAML defaults.
+        if (Application.Current is App app && app.SessionManager is { } sm)
+        {
+            _settingsWindow.LoadCurrent(app.ServerPort, sm.CurrentSettings);
+            _settingsWindow.SettingsApplied += (_, settings) => sm.ApplySettings(settings);
+        }
+
         _settingsWindow.ShowDialog();
     }
 

@@ -90,6 +90,17 @@ public class Av1EncoderServiceTests
     }
 
     [Fact]
+    public void Reconfigure_BeforeInitialize_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        using var encoder = new Av1EncoderService();
+
+        // Act & Assert — guard must fire without needing NVENC
+        Assert.Throws<InvalidOperationException>(() =>
+            encoder.Reconfigure(20, VideoQuality.High));
+    }
+
+    [Fact]
     public void Dispose_AfterInitialize_DoesNotThrow()
     {
         // Arrange
